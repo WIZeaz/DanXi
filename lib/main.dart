@@ -39,6 +39,7 @@ import 'package:dan_xi/page/subpage_timetable.dart';
 import 'package:dan_xi/provider/settings_provider.dart';
 import 'package:dan_xi/public_extension_methods.dart';
 import 'package:dan_xi/repository/announcement_repository.dart';
+import 'package:dan_xi/repository/fudan_daily_repository.dart';
 import 'package:dan_xi/repository/uis_login_tool.dart';
 import 'package:dan_xi/util/bmob/bmob/bmob.dart';
 import 'package:dan_xi/util/browser_util.dart';
@@ -56,6 +57,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
@@ -63,10 +65,63 @@ import 'package:flutter_sfsymbols/flutter_sfsymbols.dart';
 import 'package:provider/provider.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'generated/l10n.dart';
 
 final QuickActions quickActions = QuickActions();
+
+// Handle Background Task
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    print("starting up");
+    // Initialize notification
+    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+    try {
+      await flutterLocalNotificationsPlugin.initialize(InitializationSettings(),
+          onSelectNotification: null);
+    } catch (e) {
+      print(e);
+    }
+    print("notification init complete");
+    showNotification('Started', '好耶', flutterLocalNotificationsPlugin);
+    print("notification shown");
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    PersonInfo info;
+    info = PersonInfo.fromSharedPreferences(preferences);
+    print("pref init complete");
+    if (await FudanDailyRepository.getInstance().hasTick(info)) {
+      print("ticked already");
+    } else {
+      print("not yet ticked");
+      showNotification('PAFD没打卡', '好耶', flutterLocalNotificationsPlugin);
+    }
+    return Future.value(true);
+  });
+}
+
+void showNotification(
+    String title, String body, FlutterLocalNotificationsPlugin plugin) async {
+  // Show Notification
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+          'your channel id', 'your channel name', 'your channel description',
+          importance: Importance.max, priority: Priority.high, showWhen: false);
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+  await plugin.show(0, title, body, platformChannelSpecifics,
+      payload: 'item x');
+}
+
+void initializeWorkmanager() async {
+  // Configure Background Task
+  Workmanager().initialize(
+      callbackDispatcher, // The top level function, aka callbackDispatcher
+      isInDebugMode:
+          false // If enabled it will post a notification whenever the task is running. Handy for debugging tasks
+      );
+}
 
 void main() {
   // Config [Catcher] to catch uncaught exceptions.
@@ -87,6 +142,9 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   // Init Bmob database.
   Bmob.init("https://api2.bmob.cn", Secret.APP_ID, Secret.API_KEY);
+
+  initializeWorkmanager();
+
   Catcher(
       rootWidget: DanxiApp(),
       debugConfig: debugOptions,

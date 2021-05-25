@@ -42,8 +42,16 @@ import WatchConnectivity
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Configure Firebase
     FirebaseApp.configure()
-    //watchOS Support
+    
+    // Configure Background Tasks
+    UIApplication.shared.setMinimumBackgroundFetchInterval(TimeInterval(360*5)) // Unit is seconds
+    
+    // Configure Notification
+    UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
+    
+    // watchOS Support
     // You start you session with the watch by calling .activate() in your session.
     if(WCSession.isSupported()){
                   let session = WCSession.default;
