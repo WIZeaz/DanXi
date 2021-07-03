@@ -16,7 +16,9 @@
  */
 
 import 'dart:async';
-
+import 'dart:typed_data';
+import 'package:dan_xi/util/encrypt_utils.dart';
+import 'package:aes_crypt/aes_crypt.dart';
 import 'package:catcher/catcher.dart';
 import 'package:dan_xi/common/Secret.dart';
 import 'package:dan_xi/common/constant.dart';
@@ -49,6 +51,7 @@ import 'package:dan_xi/util/firebase_handler.dart';
 import 'package:dan_xi/util/platform_universal.dart';
 import 'package:dan_xi/util/screen_proxy.dart';
 import 'package:dan_xi/util/stream_listener.dart';
+import 'package:dan_xi/webvpn/interceptor.dart';
 import 'package:dan_xi/widget/login_dialog/login_dialog.dart';
 import 'package:dan_xi/widget/qr_code_dialog/qr_code_dialog.dart';
 import 'package:dan_xi/widget/top_controller.dart';
@@ -458,8 +461,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _preferences = await SharedPreferences.getInstance();
 
     if (!forceLogin && PersonInfo.verifySharedPreferences(_preferences)) {
-      setState(() =>
-          _personInfo.value = PersonInfo.fromSharedPreferences(_preferences));
+      await WebVPNInterceptor.init(
+          PersonInfo.fromSharedPreferences(_preferences));
+      setState(() {
+        _personInfo.value = PersonInfo.fromSharedPreferences(_preferences);
+      });
     } else {
       _showLoginDialog(forceLogin: forceLogin);
     }

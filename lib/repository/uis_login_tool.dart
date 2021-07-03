@@ -76,6 +76,42 @@ class UISLoginTool {
     }
     return response;
   }
+
+  static Future<Response> loginWebVpn(
+      Dio dio, NonpersistentCookieJar jar, PersonInfo info,
+      [bool forceRelogin = false]) async {
+    ArgumentError.checkNotNull(info);
+    ArgumentError.checkNotNull(jar);
+    ArgumentError.checkNotNull(dio);
+
+    // Remove old cookies.
+    jar.deleteAll();
+    Map<String, String> data = {};
+    Response res = await dio.get("https://webvpn.fudan.edu.cn/login");
+    Beautifulsoup(res.data.toString()).find_all("input").forEach((element) {
+      if (element.attributes['type'] != "button" &&
+          element.attributes.containsKey('value')) {
+        data[element.attributes['name']] = element.attributes['value'];
+      }
+    });
+    data['username'] = info.id;
+    data["password"] = info.password;
+    res = await dio.post("https://webvpn.fudan.edu.cn/do-login",
+        data: data.encodeMap(),
+        options: DioUtils.NON_REDIRECT_OPTION_WITH_FORM_TYPE);
+    Response response = await DioUtils.processRedirect(dio, res);
+    // if (response.data.toString().contains(CREDENTIALS_INVALID)) {
+    //   throw CredentialsInvalidException();
+    // } else if (response.data.toString().contains(CAPTCHA_CODE_NEEDED)) {
+    //   // Notify [main.dart] to show up a dialog to guide users to log in manually.
+    //   CaptchaNeededException().fire();
+    //   throw CaptchaNeededException();
+    // } else if (response.data.toString().contains(WEAK_PASSWORD)) {
+    //   //TODO: Actually, the response (looks like) always contains Weak Password Warning if login is unsuccessful. We should modify this later.
+    //   throw GeneralLoginFailedException();
+    // }
+    return response;
+  }
 }
 
 class CaptchaNeededException implements Exception {}

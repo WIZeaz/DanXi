@@ -56,22 +56,11 @@ class CardRepository extends BaseRepositoryWithDio {
 
   factory CardRepository.getInstance() => _instance;
 
-  Future<bool> _testLoginSuccess() async {
-    return (await cookieJar
-            .loadForRequest(Uri.parse("https://ecard.fudan.edu.cn/")))
-        .any((element) => element.name == "iPlanetDirectoryPro");
-  }
-
   // Log in before calling any method in the repository.
   Future<void> init(PersonInfo info) async {
     _info = info;
-    await Retrier.runAsyncWithRetry(() async {
-      await UISLoginTool.loginUIS(dio, LOGIN_URL, cookieJar, _info, true);
-      if (!await _testLoginSuccess()) {
-        throw new LoginException();
-      }
-      return null;
-    });
+    await Retrier.runAsyncWithRetry(() async =>
+        await UISLoginTool.loginUIS(dio, LOGIN_URL, cookieJar, _info, true));
   }
 
   Future<String> getName() async {
@@ -153,9 +142,6 @@ class CardRepository extends BaseRepositoryWithDio {
   }
 
   Future<CardInfo> loadCardInfo(int logDays) async {
-    if (!await _testLoginSuccess()) {
-      throw new LoginException();
-    }
     var cardInfo = CardInfo();
 
     //获取用户页面信息
